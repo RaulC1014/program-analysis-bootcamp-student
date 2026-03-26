@@ -38,30 +38,45 @@ let indent n = String.make (n * 2) ' '
    expression and format each variant.  For compound nodes (BinOp, UnaryOp,
    Call), recursively dump the sub-expressions at [depth + 1]. *)
 let rec dump_expr (depth : int) (e : expr) : string =
-  let _pad = indent depth in
+  let pad = indent depth in
   match e with
-  | IntLit _n ->
-    (* TODO: return  "<pad>IntLit(<n>)" *)
-    failwith "TODO: dump_expr IntLit"
-  | BoolLit _b ->
-    (* TODO: return  "<pad>BoolLit(<b>)" *)
-    failwith "TODO: dump_expr BoolLit"
-  | Var _s ->
-    (* TODO: return  "<pad>Var(\"<s>\")" *)
-    failwith "TODO: dump_expr Var"
-  | BinOp (_op, e1, e2) ->
-    (* TODO: return  "<pad>BinOp(<op>)\n<dump e1>\n<dump e2>"
-       Use dump_expr recursively on e1 and e2 at depth+1. *)
-    ignore (dump_expr (depth + 1) e1, dump_expr (depth + 1) e2);
-    failwith "TODO: dump_expr BinOp"
-  | UnaryOp (_op, e1) ->
-    (* TODO: return  "<pad>UnaryOp(<op>)\n<dump e>" *)
-    ignore (dump_expr (depth + 1) e1);
-    failwith "TODO: dump_expr UnaryOp"
-  | Call (_name, args) ->
-    (* TODO: return  "<pad>Call(\"<name>\")\n<dump each arg>" *)
-    ignore (List.map (dump_expr (depth + 1)) args);
-    failwith "TODO: dump_expr Call"
+  | IntLit n ->
+    Printf.sprintf "%sIntLit(%d)" pad n
+  | BoolLit b ->
+    Printf.sprintf "%sBoolLit(%b)" pad b
+  | Var s ->
+    Printf.sprintf "%sVar(\"%s\")" pad s
+  | BinOp (op, e1, e2) ->
+    Printf.sprintf "%sBinOp(%s)\n%s\n%s"
+      pad
+      (match op with
+       | Add -> "+"
+       | Sub -> "-"
+       | Mul -> "*"
+       | Div -> "/"
+       | Eq  -> "=="
+       | Neq -> "!="
+       | Lt  -> "<"
+       | Gt  -> ">"
+       | Le  -> "<="
+       | Ge  -> ">="
+       | And -> "&&"
+       | Or  -> "||")
+      (dump_expr (depth + 1) e1)
+      (dump_expr (depth + 1) e2)
+  | UnaryOp (op, e1) ->
+    Printf.sprintf "%sUnaryOp(%s)\n%s"
+      pad
+      (match op with
+       | Neg -> "-"
+       | Not -> "!")
+      (dump_expr (depth + 1) e1)
+  | Call (name, args) ->
+    let dumped_args = List.map (dump_expr (depth + 1)) args |> String.concat "\n" in
+    if dumped_args = "" then
+      Printf.sprintf "%sCall(\"%s\")" pad name
+    else
+      Printf.sprintf "%sCall(\"%s\")\n%s" pad name dumped_args
 
 (* Dump a single statement at the given indentation depth.
    For statements that contain expressions (Assign, If, While, Return, Print),
@@ -69,47 +84,44 @@ let rec dump_expr (depth : int) (e : expr) : string =
    For statements that contain sub-statement lists (If, While, Block),
    use dump_stmts at [depth + 1]. *)
 and dump_stmt (depth : int) (s : stmt) : string =
-  let _pad = indent depth in
+  let pad = indent depth in
   match s with
-  | Assign (_v, e) ->
-    (* TODO: return  "<pad>Assign(\"<v>\")\n<dump e at depth+1>" *)
-    ignore (dump_expr (depth + 1) e);
-    failwith "TODO: dump_stmt Assign"
+  | Assign (v, e) ->
+    Printf.sprintf "%sAssign(\"%s\")\n%s" pad v (dump_expr (depth + 1) e)
   | If (cond, then_b, else_b) ->
-    (* TODO: return
-         "<pad>If\n<dump cond>\n<pad>Then\n<dump then stmts>\n<pad>Else\n<dump else stmts>"
-    *)
-    ignore (dump_expr (depth + 1) cond,
-            dump_stmts (depth + 1) then_b,
-            dump_stmts (depth + 1) else_b);
-    failwith "TODO: dump_stmt If"
+    Printf.sprintf "%sIf\n%s\n%sThen\n%s\n%sElse\n%s"
+      pad
+      (dump_expr (depth + 1) cond)
+      pad
+      (dump_stmts (depth + 1) then_b)
+      pad
+      (dump_stmts (depth + 1) else_b)
   | While (cond, body) ->
-    (* TODO: return
-         "<pad>While\n<dump cond>\n<pad>Body\n<dump body stmts>"
-    *)
-    ignore (dump_expr (depth + 1) cond, dump_stmts (depth + 1) body);
-    failwith "TODO: dump_stmt While"
+    Printf.sprintf "%sWhile\n%s\n%sBody\n%s"
+      pad
+      (dump_expr (depth + 1) cond)
+      pad
+      (dump_stmts (depth + 1) body)
   | Return None ->
-    (* TODO: return  "<pad>Return()" *)
-    failwith "TODO: dump_stmt Return None"
+    Printf.sprintf "%sReturn()" pad
   | Return (Some e) ->
-    (* TODO: return  "<pad>Return\n<dump e at depth+1>" *)
-    ignore (dump_expr (depth + 1) e);
-    failwith "TODO: dump_stmt Return Some"
+    Printf.sprintf "%sReturn\n%s" pad (dump_expr (depth + 1) e)
   | Print exprs ->
-    (* TODO: return  "<pad>Print\n<dump each expr at depth+1>" *)
-    ignore (List.map (dump_expr (depth + 1)) exprs);
-    failwith "TODO: dump_stmt Print"
+    let dumped_exprs = List.map (dump_expr (depth + 1)) exprs |> String.concat "\n" in
+    if dumped_exprs = "" then
+      Printf.sprintf "%sPrint" pad
+    else
+      Printf.sprintf "%sPrint\n%s" pad dumped_exprs
   | Block stmts ->
-    (* TODO: return  "<pad>Block\n<dump each stmt at depth+1>" *)
-    ignore (dump_stmts (depth + 1) stmts);
-    failwith "TODO: dump_stmt Block"
+    let dumped_stmts = dump_stmts (depth + 1) stmts in
+    if dumped_stmts = "" then
+      Printf.sprintf "%sBlock" pad
+    else
+      Printf.sprintf "%sBlock\n%s" pad dumped_stmts
 
 (* Dump a list of statements, joining them with newlines. *)
 and dump_stmts (depth : int) (stmts : stmt list) : string =
-  (* TODO: map dump_stmt over stmts at the given depth and join with "\n" *)
-  ignore (List.map (dump_stmt depth) stmts);
-  failwith "TODO: dump_stmts"
+  List.map (dump_stmt depth) stmts |> String.concat "\n"
 
 (* Top-level entry point: dump an entire function body. *)
 let dump_ast (stmts : stmt list) : string =
@@ -133,9 +145,12 @@ let dump_ast (stmts : stmt list) : string =
 (* Helper: increment the count for [key] in an association list.
    If the key is not present, add it with count 1. *)
 let inc (key : string) (counts : (string * int) list) : (string * int) list =
-  (* TODO: if key exists in counts, increment its value; otherwise append (key, 1) *)
-  ignore (key, counts);
-  failwith "TODO: inc"
+  let rec aux = function
+    | [] -> [(key, 1)]
+    | (k, v) :: rest when k = key -> (k, v + 1) :: rest
+    | pair :: rest -> pair :: aux rest
+  in
+  aux counts
 
 (* Count node types inside an expression, accumulating into [acc].
    Match on each expr variant, use [inc] to add its type name, then
@@ -143,52 +158,52 @@ let inc (key : string) (counts : (string * int) list) : (string * int) list =
 let rec count_expr (acc : (string * int) list) (e : expr) : (string * int) list =
   match e with
   | IntLit _ ->
-    (* TODO: inc "IntLit" acc *)
-    ignore (acc, inc); failwith "TODO: count_expr IntLit"
+    inc "IntLit" acc
   | BoolLit _ ->
-    ignore acc; failwith "TODO: count_expr BoolLit"
+    inc "BoolLit" acc
   | Var _ ->
-    ignore acc; failwith "TODO: count_expr Var"
+    inc "Var" acc
   | BinOp (_, e1, e2) ->
-    (* TODO: inc "BinOp", then recurse into e1 and e2 *)
-    ignore (count_expr acc e1, count_expr acc e2);
-    failwith "TODO: count_expr BinOp"
+    let acc1 = inc "BinOp" acc in
+    let acc2 = count_expr acc1 e1 in
+    count_expr acc2 e2
   | UnaryOp (_, e1) ->
-    ignore (count_expr acc e1);
-    failwith "TODO: count_expr UnaryOp"
+    let acc1 = inc "UnaryOp" acc in
+    count_expr acc1 e1
   | Call (_, args) ->
-    ignore (List.fold_left count_expr acc args);
-    failwith "TODO: count_expr Call"
+    let acc1 = inc "Call" acc in
+    List.fold_left count_expr acc1 args
 
 (* Count node types inside a statement, accumulating into [acc]. *)
 and count_stmt (acc : (string * int) list) (s : stmt) : (string * int) list =
   match s with
   | Assign (_, e) ->
-    ignore (count_expr acc e);
-    failwith "TODO: count_stmt Assign"
+    let acc1 = inc "Assign" acc in
+    count_expr acc1 e
   | If (cond, then_b, else_b) ->
-    ignore (count_expr acc cond, count_stmts acc then_b, count_stmts acc else_b);
-    failwith "TODO: count_stmt If"
+    let acc1 = inc "If" acc in
+    let acc2 = count_expr acc1 cond in
+    let acc3 = count_stmts acc2 then_b in
+    count_stmts acc3 else_b
   | While (cond, body) ->
-    ignore (count_expr acc cond, count_stmts acc body);
-    failwith "TODO: count_stmt While"
+    let acc1 = inc "While" acc in
+    let acc2 = count_expr acc1 cond in
+    count_stmts acc2 body
   | Return None ->
-    ignore acc; failwith "TODO: count_stmt Return None"
+    inc "Return" acc
   | Return (Some e) ->
-    ignore (count_expr acc e);
-    failwith "TODO: count_stmt Return Some"
+    let acc1 = inc "Return" acc in
+    count_expr acc1 e
   | Print exprs ->
-    ignore (List.fold_left count_expr acc exprs);
-    failwith "TODO: count_stmt Print"
+    let acc1 = inc "Print" acc in
+    List.fold_left count_expr acc1 exprs
   | Block stmts ->
-    ignore (count_stmts acc stmts);
-    failwith "TODO: count_stmt Block"
+    let acc1 = inc "Block" acc in
+    count_stmts acc1 stmts
 
 (* Count across a list of statements. *)
 and count_stmts (acc : (string * int) list) (stmts : stmt list) : (string * int) list =
-  (* TODO: fold count_stmt over the list *)
-  ignore (List.fold_left count_stmt acc stmts);
-  failwith "TODO: count_stmts"
+  List.fold_left count_stmt acc stmts
 
 (* Top-level entry point. *)
 let count_node_types (stmts : stmt list) : (string * int) list =
@@ -213,15 +228,25 @@ let count_node_types (stmts : stmt list) : (string * int) list =
    Eq -> "==", Neq -> "!=", Lt -> "<", Gt -> ">",
    Le -> "<=", Ge -> ">=", And -> "&&", Or -> "||" *)
 let string_of_op (op : op) : string =
-  (* TODO *)
-  ignore op;
-  failwith "TODO: string_of_op"
+  match op with
+  | Add -> "+"
+  | Sub -> "-"
+  | Mul -> "*"
+  | Div -> "/"
+  | Eq  -> "=="
+  | Neq -> "!="
+  | Lt  -> "<"
+  | Gt  -> ">"
+  | Le  -> "<="
+  | Ge  -> ">="
+  | And -> "&&"
+  | Or  -> "||"
 
 (* Convert a unary operator to its string symbol. *)
 let string_of_uop (uop : uop) : string =
-  (* TODO: Neg -> "-", Not -> "!" *)
-  ignore uop;
-  failwith "TODO: string_of_uop"
+  match uop with
+  | Neg -> "-"
+  | Not -> "!"
 
 (* Convert an expression to a string (parenthesized where needed).
      - IntLit n   -> string_of_int n
@@ -232,19 +257,25 @@ let string_of_uop (uop : uop) : string =
      - Call       -> "<name>(<arg1>, <arg2>, ...)" *)
 let rec expr_to_string (e : expr) : string =
   match e with
-  | BinOp (_, e1, e2) ->
-    (* TODO *)
-    ignore (expr_to_string e1, expr_to_string e2, string_of_op, string_of_uop);
-    failwith "TODO: expr_to_string BinOp"
-  | UnaryOp (_, e1) ->
-    ignore (expr_to_string e1);
-    failwith "TODO: expr_to_string UnaryOp"
-  | Call (_, args) ->
-    ignore (List.map expr_to_string args);
-    failwith "TODO: expr_to_string Call"
-  | _ ->
-    (* TODO: handle IntLit, BoolLit, Var *)
-    failwith "TODO: expr_to_string leaf"
+  | IntLit n ->
+    string_of_int n
+  | BoolLit b ->
+    string_of_bool b
+  | Var s ->
+    s
+  | BinOp (op, e1, e2) ->
+    Printf.sprintf "(%s %s %s)"
+      (expr_to_string e1)
+      (string_of_op op)
+      (expr_to_string e2)
+  | UnaryOp (uop, e1) ->
+    Printf.sprintf "(%s%s)"
+      (string_of_uop uop)
+      (expr_to_string e1)
+  | Call (name, args) ->
+    Printf.sprintf "%s(%s)"
+      name
+      (List.map expr_to_string args |> String.concat ", ")
 
 (* Pretty-print a single statement at the given indentation level.
      - Assign: "<pad><var> = <expr>;"
@@ -256,35 +287,50 @@ let rec expr_to_string (e : expr) : string =
      - Print:  "<pad>print(<expr1>, <expr2>, ...);"
      - Block:  "<pad>{\n<stmts>\n<pad>}" *)
 and pp_stmt (depth : int) (s : stmt) : string =
-  let _pad = indent depth in
+  let pad = indent depth in
   match s with
-  | Assign (_, e) ->
-    ignore (expr_to_string e);
-    failwith "TODO: pp_stmt Assign"
+  | Assign (v, e) ->
+    Printf.sprintf "%s%s = %s;" pad v (expr_to_string e)
   | If (cond, then_b, else_b) ->
-    ignore (expr_to_string cond, pp_stmts (depth + 1) then_b,
-            pp_stmts (depth + 1) else_b);
-    failwith "TODO: pp_stmt If"
+    let then_part = pp_stmts (depth + 1) then_b in
+    if else_b = [] then
+      Printf.sprintf "%sif (%s) {\n%s\n%s}"
+        pad
+        (expr_to_string cond)
+        then_part
+        pad
+    else
+      let else_part = pp_stmts (depth + 1) else_b in
+      Printf.sprintf "%sif (%s) {\n%s\n%s} else {\n%s\n%s}"
+        pad
+        (expr_to_string cond)
+        then_part
+        pad
+        else_part
+        pad
   | While (cond, body) ->
-    ignore (expr_to_string cond, pp_stmts (depth + 1) body);
-    failwith "TODO: pp_stmt While"
+    Printf.sprintf "%swhile (%s) {\n%s\n%s}"
+      pad
+      (expr_to_string cond)
+      (pp_stmts (depth + 1) body)
+      pad
   | Return None ->
-    failwith "TODO: pp_stmt Return None"
+    Printf.sprintf "%sreturn;" pad
   | Return (Some e) ->
-    ignore (expr_to_string e);
-    failwith "TODO: pp_stmt Return Some"
+    Printf.sprintf "%sreturn %s;" pad (expr_to_string e)
   | Print exprs ->
-    ignore (List.map expr_to_string exprs);
-    failwith "TODO: pp_stmt Print"
+    Printf.sprintf "%sprint(%s);"
+      pad
+      (List.map expr_to_string exprs |> String.concat ", ")
   | Block stmts ->
-    ignore (pp_stmts (depth + 1) stmts);
-    failwith "TODO: pp_stmt Block"
+    Printf.sprintf "%s{\n%s\n%s}"
+      pad
+      (pp_stmts (depth + 1) stmts)
+      pad
 
 (* Pretty-print a list of statements, joining with newlines. *)
 and pp_stmts (depth : int) (stmts : stmt list) : string =
-  (* TODO *)
-  ignore (List.map (pp_stmt depth) stmts);
-  failwith "TODO: pp_stmts"
+  List.map (pp_stmt depth) stmts |> String.concat "\n"
 
 (* Top-level entry point. *)
 let print_tree (stmts : stmt list) : string =
